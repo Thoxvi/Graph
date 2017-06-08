@@ -85,7 +85,7 @@ class Graph {
 private:
     std::vector<Edge<T> *> edges;
 
-    void DFSHelper(Graph *tree, std::vector<Edge<T>> *restEdge);
+    void DFSHelper(Graph *tree, std::vector<Edge<T> *> &restEdge, std::vector<Node<T> *> &visitedNode);
 
     bool isNodeInList(Node<T> *node, std::vector<Node<T> *> &list) {
         auto it = std::find(list.begin(), list.end(), node);
@@ -93,6 +93,8 @@ private:
     }
 
 public:
+    Graph() {};
+
     void addNode(T data);
 
     void addNode(Node<T> *node);
@@ -104,6 +106,12 @@ public:
     void addEdge(Edge<T> *edge);
 
     std::vector<Node<T> *> getAllNodeFromEdges();
+
+    std::vector<Edge<T> *> getEdgeIfNodeIn(int ID);
+
+    std::vector<Edge<T> *> getEdgeIfNodeStart(int ID);
+
+    std::vector<Edge<T> *> getEdgeIfNodeEnd(int ID);
 
     Node<T> *getNodeByID(int ID);
 
@@ -162,6 +170,40 @@ std::vector<Node<T> *> Graph<T>::getAllNodeFromEdges() {
 }
 
 template<class T>
+std::vector<Edge<T> *> Graph<T>::getEdgeIfNodeIn(int ID) {
+    std::vector<Edge<T> *> list;
+    for (Edge<T> *edge:edges) {
+        if (edge->getStart()->getID() == ID ||
+            edge->getEnd()->getID() == ID) {
+            list.push_back(edge);
+        }
+    }
+    return list;
+}
+
+template<class T>
+std::vector<Edge<T> *> Graph<T>::getEdgeIfNodeStart(int ID) {
+    std::vector<Edge<T> *> list;
+    for (Edge<T> *edge:edges) {
+        if (edge->getStart()->getID() == ID) {
+            list.push_back(edge);
+        }
+    }
+    return list;
+}
+
+template<class T>
+std::vector<Edge<T> *> Graph<T>::getEdgeIfNodeEnd(int ID) {
+    std::vector<Edge<T> *> list;
+    for (Edge<T> *edge:edges) {
+        if (edge->getEnd()->getID() == ID) {
+            list.push_back(edge);
+        }
+    }
+    return list;
+}
+
+template<class T>
 Node<T> *Graph<T>::getNodeByID(int ID) {
     for (Node<T> *node:getAllNodeFromEdges()) {
         if (node->getID() == ID) {
@@ -182,6 +224,7 @@ bool Graph<T>::hasEdge(int sID, int eID) {
     return false;
 }
 
+
 template<class T>
 bool Graph<T>::delEdge(int sID, int eID) {
     for (auto it = edges.begin(); it != edges.end(); ++it) {
@@ -192,6 +235,22 @@ bool Graph<T>::delEdge(int sID, int eID) {
         }
     }
     return false;
+}
+
+template<class T>
+Graph<T> *Graph<T>::DFS(int sID) {
+    Graph<T> *tree = new Graph<T>();
+    std::vector<Edge<T> *> restEdge;
+    std::vector<Node<T> *> visitedNode;
+    DFSHelper(tree, restEdge, visitedNode);
+    return tree;
+}
+
+template<class T>
+void Graph<T>::DFSHelper(Graph<T> *tree, std::vector<Edge<T> *> &restEdge, std::vector<Node<T> *> &visitedNode) {
+    if (restEdge.size() != 0) {
+        
+    }
 }
 
 
