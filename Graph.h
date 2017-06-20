@@ -7,6 +7,8 @@
 
 
 #include <vector>
+#include <algorithm>
+
 
 template<class T>
 class Node {
@@ -48,6 +50,15 @@ public:
 
     Edge(Node<T> *s) : start(s), end(nullptr), power(-1) {}
 
+    Node<T> *getAnOtherNode(Node<T> *one) {
+        if (isStart(*one)) {
+            return getEnd();
+        } else if (isEnd(*one)) {
+            return getStart();
+        }
+        return nullptr;
+    }
+
     bool isSinglNode() { return power == -1; }
 
     bool isStart(Node<T> &node) {
@@ -60,6 +71,14 @@ public:
 
     bool isMyNode(Node<T> &node) {
         return isStart(node) || isEnd(node);
+    }
+
+    bool isDouble(Node<T> &nodeA, Node<T> &nodeB) {
+        return isMyNode(nodeA) && isMyNode(nodeB);
+    }
+
+    bool operator<(const Edge<T> &edge) const {
+        return power < edge.getPower();
     }
 
     //Setter && Getter
@@ -78,6 +97,14 @@ public:
     void setEnd(Node<T> *end) {
         Edge::end = end;
     }
+
+    int getPower() const {
+        return power;
+    }
+
+    void setPower(int power) {
+        Edge::power = power;
+    }
 };
 
 template<class T>
@@ -85,11 +112,16 @@ class Graph {
 private:
     std::vector<Edge<T> *> edges;
 
-    void DFSHelper(Graph *tree, std::vector<Edge<T> *> &restEdge, std::vector<Node<T> *> &visitedNode);
+    void DFSHelper(Graph *tree, Graph<T> &restEdge, std::vector<Node<T> *> &visitedNode);
 
     bool isNodeInList(Node<T> *node, std::vector<Node<T> *> &list) {
-        auto it = std::find(list.begin(), list.end(), node);
-        return !(it == list.end());
+        if (node == nullptr)return false;
+        for (Node<T> *tmpNode:list) {
+            if (node->same(*tmpNode)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 public:
@@ -117,12 +149,16 @@ public:
 
     bool hasEdge(int sID, int eID);
 
+    bool hasEdge(Edge<T> *edge);
+
     bool delEdge(int sID, int eID);
+
+    bool delEdge(Edge<T> *del);
 
     //深度优先遍历
     Graph<T> *DFS(int sID);
 
-    //深度优先遍历B
+    //广度优先遍历
     Graph<T> *BFS(int sID);
 
 };
@@ -215,9 +251,19 @@ Node<T> *Graph<T>::getNodeByID(int ID) {
 
 template<class T>
 bool Graph<T>::hasEdge(int sID, int eID) {
-    for (Edge<T> edge:edges) {
-        if (edge.getStart()->getID() == sID &&
-            edge.getEnd()->getID() == eID) {
+    for (Edge<T> *edge:edges) {
+        if (edge->getStart()->getID() == sID &&
+            edge->getEnd()->getID() == eID) {
+            return true;
+        }
+    }
+    return false;
+}
+
+template<class T>
+bool Graph<T>::hasEdge(Edge<T> *edge) {
+    for (Edge<T> *tedge:edges) {
+        if (tedge->isDouble(*edge->getStart(), *edge->getEnd())) {
             return true;
         }
     }
@@ -238,18 +284,74 @@ bool Graph<T>::delEdge(int sID, int eID) {
 }
 
 template<class T>
+bool Graph<T>::delEdge(Edge<T> *del) {
+    for (auto it = edges.begin(); it != edges.end(); ++it) {
+        if ((*it)->isDouble(*del->getStart(), *del->getEnd())) {
+            edges.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+template<class T>
 Graph<T> *Graph<T>::DFS(int sID) {
     Graph<T> *tree = new Graph<T>();
-    std::vector<Edge<T> *> restEdge;
-    std::vector<Node<T> *> visitedNode;
+    std::vector<Node<T> *> visitedNode = std::vector<Node<T> *>();
+
+    Graph<T> restEdge = Graph<T>();
+    for (Edge<T> *edge:edges) {
+        restEdge.addEdge(edge);
+    }
+
+    Node<T> *next = getNodeByID(sID);
+    visitedNode.push_back(next);
+
     DFSHelper(tree, restEdge, visitedNode);
     return tree;
 }
 
 template<class T>
-void Graph<T>::DFSHelper(Graph<T> *tree, std::vector<Edge<T> *> &restEdge, std::vector<Node<T> *> &visitedNode) {
-    if (restEdge.size() != 0) {
-        
+void
+Graph<T>::DFSHelper(Graph<T> *tree, Graph<T> &restEdge, std::vector<Node<T> *> &visitedNode) {
+//    Node<T> *now = *(visitedNode.end() - 1);
+//    std::vector<Edge<T> *> sideEdge;
+//    for (Edge<T> *edge:restEdge) {
+//        Node<T> *anoutherNode = edge->getAnOtherNode(now);
+//        if (!isNodeInList(anoutherNode, visitedNode)) {
+//            sideEdge.push_back(edge);
+//        }
+//    }
+//    std::sort(sideEdge.begin(), sideEdge.end());
+//    for (Edge<T> *tmpEdge:sideEdge) {
+////        if (tree->hasEdge(tmpEdge)) continue;
+//        tree->addEdge(tmpEdge);
+//        if (tmpEdge->isStart(*now)) {
+//            visitedNode.push_back(tmpEdge->getEnd());
+//        } else {
+//            visitedNode.push_back(tmpEdge->getStart());
+//        }
+//        for (auto it = restEdge.begin(); it != restEdge.end(); ++it) {
+//            if ((*it) == tmpEdge) {
+//                restEdge.erase(it);
+//                break;
+//            }
+//        }
+//        DFSHelper(tree, restEdge, visitedNode);
+//
+//    }
+
+    Node<T> *now = *(visitedNode.end() - 1);
+    auto tmpEdges = restEdge.getEdgeIfNodeIn(now->getID());
+    std::sort(tmpEdges.begin(), tmpEdges.end());
+    for (auto minEdge:tmpEdges) {
+        auto anOtherNode = minEdge->getAnOtherNode(now);
+        if (!isNodeInList(anOtherNode, visitedNode)) {
+            tree->addEdge(minEdge);
+            restEdge.delEdge(minEdge);
+            visitedNode.push_back(anOtherNode);
+            DFSHelper(tree, restEdge, visitedNode);
+        }
     }
 }
 
