@@ -31,7 +31,7 @@ int main() {
     graph->addEdge(edge6);
 
 
-    auto tree = graph->DFS(0);
+    auto tree = graph->BFS(0);
 
     return 0;
 }

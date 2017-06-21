@@ -73,6 +73,10 @@ public:
         return isStart(node) || isEnd(node);
     }
 
+    bool isMyNode(Node<T> &nodeA, Node<T> &nodeB) {
+        return isMyNode(nodeA) && isMyNode(nodeB);
+    }
+
     bool isDouble(Node<T> &nodeA, Node<T> &nodeB) {
         return isMyNode(nodeA) && isMyNode(nodeB);
     }
@@ -81,8 +85,12 @@ public:
         return power < edge.getPower();
     }
 
+    bool operator==(const Edge<T> &edge) const {
+        return edge.getStart()->getID() == getStart()->getID() && edge.getEnd()->getID() == getEnd()->getID();
+    }
+
     //Setter && Getter
-    Node<T> *getStart() {
+    Node<T> *getStart() const {
         return start;
     }
 
@@ -90,7 +98,7 @@ public:
         Edge::start = start;
     }
 
-    Node<T> *getEnd() {
+    Node<T> *getEnd() const {
         return end;
     }
 
@@ -113,6 +121,8 @@ private:
     std::vector<Edge<T> *> edges;
 
     void DFSHelper(Graph *tree, Graph<T> &restEdge, std::vector<Node<T> *> &visitedNode);
+
+    void BFSHelper(Graph *tree, std::vector<Edge<T> *> &spareEdge, std::vector<Node<T> *> &visitedNode);
 
     bool isNodeInList(Node<T> *node, std::vector<Node<T> *> &list) {
         if (node == nullptr)return false;
@@ -139,7 +149,7 @@ public:
 
     std::vector<Node<T> *> getAllNodeFromEdges();
 
-    std::vector<Edge<T> *> getEdgeIfNodeIn(int ID);
+    std::vector<Edge<T> *> getEdgesIfNodeIn(int ID);
 
     std::vector<Edge<T> *> getEdgeIfNodeStart(int ID);
 
@@ -160,6 +170,15 @@ public:
 
     //广度优先遍历
     Graph<T> *BFS(int sID);
+
+    //Getter & Setter
+    std::vector<Edge<T> *> *getEdges() {
+        return &edges;
+    }
+
+    void setEdges(const std::vector<Edge<T> *> &edges) {
+        Graph::edges = edges;
+    }
 
 };
 
@@ -206,7 +225,7 @@ std::vector<Node<T> *> Graph<T>::getAllNodeFromEdges() {
 }
 
 template<class T>
-std::vector<Edge<T> *> Graph<T>::getEdgeIfNodeIn(int ID) {
+std::vector<Edge<T> *> Graph<T>::getEdgesIfNodeIn(int ID) {
     std::vector<Edge<T> *> list;
     for (Edge<T> *edge:edges) {
         if (edge->getStart()->getID() == ID ||
@@ -312,6 +331,56 @@ Graph<T> *Graph<T>::DFS(int sID) {
 }
 
 template<class T>
+Graph<T> *Graph<T>::BFS(int sID) {
+    Graph<T> *tree = new Graph<T>();
+    std::vector<Node<T> *> visitedNode = std::vector<Node<T> *>();
+    std::vector<Edge<T> *> disableEdge = std::vector<Edge<T> *>();
+    std::vector<Edge<T> *> spareEdge = std::vector<Edge<T> *>();
+    Node<T> *next = getNodeByID(sID);
+    visitedNode.push_back(next);
+
+    do {
+        Node<T> *now = *(visitedNode.end() - 1);
+        std::vector<Edge<T> *> sideEdges = getEdgesIfNodeIn(now->getID());
+        Graph<T> mixEdges = Graph();
+
+        mixEdges.getEdges()->insert(mixEdges.getEdges()->begin(), tree->getEdges()->begin(), tree->getEdges()->end());
+        mixEdges.getEdges()->insert(mixEdges.getEdges()->begin(), spareEdge.begin(), spareEdge.end());
+        mixEdges.getEdges()->insert(mixEdges.getEdges()->begin(), disableEdge.begin(), disableEdge.end());
+
+
+        std::vector<Edge<T> *> tmpEdges = std::vector<Edge<T> *>();
+
+        for (Edge<T> *edge:sideEdges) {
+            if (!mixEdges.hasEdge(edge)) {
+                tmpEdges.push_back(edge);
+            }
+        }
+        spareEdge.insert(spareEdge.end(), tmpEdges.begin(), tmpEdges.end());
+        std::sort(spareEdge.begin(), spareEdge.end());
+        Edge<T> *minEdge = *(spareEdge.begin());
+        spareEdge.erase(spareEdge.begin());
+        for (Node<T> *node:visitedNode) {
+            if (minEdge->isMyNode(*node)) {
+                Node<T> *anOther = minEdge->getAnOtherNode(node);
+                //检测无效边
+                if (isNodeInList(anOther, visitedNode)) {
+                    disableEdge.push_back(minEdge);
+                    break;
+                }
+                tree->addEdge(minEdge);
+                visitedNode.push_back(anOther);
+                break;
+            }
+        }
+
+    } while ((tree->getEdges()->size() + disableEdge.size()) < this->getEdges()->size());
+
+
+    return tree;
+}
+
+template<class T>
 void
 Graph<T>::DFSHelper(Graph<T> *tree, Graph<T> &restEdge, std::vector<Node<T> *> &visitedNode) {
 //    Node<T> *now = *(visitedNode.end() - 1);
@@ -342,7 +411,7 @@ Graph<T>::DFSHelper(Graph<T> *tree, Graph<T> &restEdge, std::vector<Node<T> *> &
 //    }
 
     Node<T> *now = *(visitedNode.end() - 1);
-    auto tmpEdges = restEdge.getEdgeIfNodeIn(now->getID());
+    auto tmpEdges = restEdge.getEdgesIfNodeIn(now->getID());
     std::sort(tmpEdges.begin(), tmpEdges.end());
     for (auto minEdge:tmpEdges) {
         auto anOtherNode = minEdge->getAnOtherNode(now);
@@ -353,6 +422,18 @@ Graph<T>::DFSHelper(Graph<T> *tree, Graph<T> &restEdge, std::vector<Node<T> *> &
             DFSHelper(tree, restEdge, visitedNode);
         }
     }
+}
+
+template<class T>
+void
+Graph<T>::BFSHelper(Graph<T> *tree, std::vector<Edge<T> *> &spareEdge, std::vector<Node<T> *> &visitedNode) {
+    Node<T> *now = *(visitedNode.end() - 1);
+    std::vector<Edge<T> *> sideEdges = tree->getEdgesIfNodeIn(now->getID());
+    spareEdge.insert(sideEdges.end(), sideEdges.begin(), sideEdges.end());
+    std::sort(spareEdge.begin(), spareEdge.end());
+    spareEdge.erase(std::unique(spareEdge.begin(), spareEdge.end()), spareEdge.end());
+
+
 }
 
 
